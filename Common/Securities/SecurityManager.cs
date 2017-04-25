@@ -379,12 +379,16 @@ namespace QuantConnect.Securities
                 case SecurityType.Option:
                     if (addToSymbolCache) SymbolCache.Set(symbol.Underlying.Value, symbol.Underlying);
                     configList.SetDataNormalizationMode(DataNormalizationMode.Raw);
-                    security = new Option.Option(symbol, exchangeHours, securityPortfolioManager.CashBook[CashBook.AccountCurrency], new Option.OptionSymbolProperties(symbolProperties));
+                    //security = new Option.Option(symbol, exchangeHours, securityPortfolioManager.CashBook[CashBook.AccountCurrency], new Option.OptionSymbolProperties(symbolProperties));
+                    //changed by rwayan 20170416 for support chinese market option
+                    security = new Option.Option(symbol, exchangeHours, quoteCash, new Option.OptionSymbolProperties(symbolProperties));
                     break;
 
                 case SecurityType.Future:
                     configList.SetDataNormalizationMode(DataNormalizationMode.Raw);
-                    security = new Future.Future(symbol, exchangeHours, securityPortfolioManager.CashBook[CashBook.AccountCurrency], symbolProperties);
+                    //security = new Future.Future(symbol, exchangeHours, securityPortfolioManager.CashBook[CashBook.AccountCurrency], symbolProperties);
+                    //changed by rwayan 20170416 for support chinese Future
+                    security = new Future.Future(symbol, exchangeHours, quoteCash, symbolProperties);
                     break;
 
                 case SecurityType.Forex:

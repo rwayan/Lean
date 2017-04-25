@@ -45,7 +45,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Transport
 
             if (stream != null)
             {
-                _streamReader = new StreamReader(stream);
+                _streamReader = new StreamReader(stream,System.Text.Encoding.GetEncoding("gbk"));
             }
         }
 

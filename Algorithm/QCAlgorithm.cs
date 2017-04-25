@@ -1341,6 +1341,7 @@ namespace QuantConnect.Algorithm
                 marketHoursEntry.ExchangeHours, marketHoursEntry.DataTimeZone, symbolProperties, SecurityInitializer, canonicalSymbol, resolution,
                 fillDataForward, leverage, false, false, false, LiveMode, true, false);
             canonicalSecurity.IsTradable = false;
+
             Securities.Add(canonicalSecurity);
 
             // add this security to the user defined universe

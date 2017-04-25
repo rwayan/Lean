@@ -503,7 +503,10 @@ namespace QuantConnect.Util
                         var right = (OptionRight)Enum.Parse(typeof(OptionRight), parts[3], true);
                         var strike = decimal.Parse(parts[4]) / 10000m;
                         var expiry = DateTime.ParseExact(parts[5], DateFormat.EightCharacter, null);
-                        return Symbol.CreateOption(symbol.Underlying, Market.USA, style, right, strike, expiry);
+
+                        //return Symbol.CreateOption(symbol.Underlying, Market.USA, style, right, strike, expiry);
+                        //changed by rwayan for suited for chinese option
+                        return Symbol.CreateOption(symbol.Underlying, symbol.Underlying.ID.Market , style, right, strike, expiry);
                     }
                     else
                     {
@@ -511,7 +514,10 @@ namespace QuantConnect.Util
                         var right = (OptionRight)Enum.Parse(typeof(OptionRight), parts[5], true);
                         var strike = decimal.Parse(parts[6]) / 10000m;
                         var expiry = DateTime.ParseExact(parts[7], DateFormat.EightCharacter, null);
-                        return Symbol.CreateOption(symbol.Underlying, Market.USA, style, right, strike, expiry);
+
+                        //return Symbol.CreateOption(symbol.Underlying, Market.USA, style, right, strike, expiry);
+                        //changed by rwayan for suited for chinese option
+                        return Symbol.CreateOption(symbol.Underlying, symbol.Underlying.ID.Market , style, right, strike, expiry);
                     }
                     break;
 
