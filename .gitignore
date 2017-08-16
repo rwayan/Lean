@@ -252,3 +252,4 @@ Charts/
 # NCrunch files
 *.ncrunchsolution
 *.ncrunchproject
+Launcher/config.json

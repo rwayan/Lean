@@ -25,6 +25,7 @@ using QuantConnect.Orders;
 using QuantConnect.Securities.Option;
 using QuantConnect.Securities;
 using QuantConnect.Data.UniverseSelection;
+using QuantConnect.Data.Auxiliary;
 
 namespace QuantConnect.Algorithm.CSharp
 {
@@ -37,24 +38,25 @@ namespace QuantConnect.Algorithm.CSharp
     {
         private const string UnderlyingTicker = "510050";
         public readonly Symbol Underlying = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Equity, Market.SSE);
-        public readonly Symbol OptionSymbol = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Option, Market.SSE);
+        //public readonly Symbol OptionSymbol = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Option, Market.SSE);
+        public readonly Symbol OptionSymbol = QuantConnect.Symbol.CreateOption(UnderlyingTicker, Market.SSE, OptionStyle.European, default(OptionRight), 0, SecurityIdentifier.DefaultDate);
 
         public override void Initialize()
         {
-            SetStartDate(2015, 12, 24);
-            SetEndDate(2015, 12, 24);
+            SetStartDate(2015, 2, 10);
+            SetEndDate(2015, 2, 11);
             SetCash(1000000000);
-
+            SetTimeZone(TimeZones.Shanghai);
             var equity = AddEquity(UnderlyingTicker,market:Market.SSE);
             var option = AddChineseOption(UnderlyingTicker,market:Market.SSE);
             //AddData<ChineseOption>(UnderlyingTicker, Resolution.Minute, true ,leverage:0);
-            
 
-            equity.SetDataNormalizationMode(DataNormalizationMode.Raw);
+
+            //equity.SetDataNormalizationMode(DataNormalizationMode.Raw);
 
             // set our strike/expiry filter for this option chain
-            option.SetFilter(-2, +2, TimeSpan.Zero, TimeSpan.FromDays(180));
-
+            option.SetFilter(u => u.Strikes(-2, +2)
+                                   .Expiration(TimeSpan.Zero, TimeSpan.FromDays(180)));
             // use the underlying equity as the benchmark
             SetBenchmark(equity.Symbol);
         }
@@ -75,12 +77,13 @@ namespace QuantConnect.Algorithm.CSharp
             var alias = "?" + underlying;
             if (!SymbolCache.TryGetSymbol(alias, out canonicalSymbol))
             {
-                canonicalSymbol = QuantConnect.Symbol.Create(underlying, SecurityType.Option, market, alias);
+                //canonicalSymbol = QuantConnect.Symbol.Create(underlying, SecurityType.Option, market, alias);
+                canonicalSymbol = QuantConnect.Symbol.CreateOption(underlying, market, OptionStyle.European, default(OptionRight), 0, SecurityIdentifier.DefaultDate, alias);
             }
 
             var marketHoursEntry = MarketHoursDatabase.FromDataFolder().GetEntry(market, underlying, SecurityType.Option);
             var symbolProperties = SymbolPropertiesDatabase.FromDataFolder().GetSymbolProperties(market, underlying, SecurityType.Option, CashBook.AccountCurrency);
-            var canonicalSecurity = (Option)SecurityManager.CreateSecurity(new List<Type>() { typeof(ChineseOption) }, Portfolio, SubscriptionManager,
+            var canonicalSecurity = (Option)SecurityManager.CreateSecurity(new List<Type>() { typeof(ZipEntryName) }, Portfolio, SubscriptionManager,
                 marketHoursEntry.ExchangeHours, marketHoursEntry.DataTimeZone, symbolProperties, SecurityInitializer, canonicalSymbol, resolution,
                 fillDataForward, leverage, false, false, false, LiveMode, true, false);
             canonicalSecurity.IsTradable = false;
@@ -110,25 +113,19 @@ namespace QuantConnect.Algorithm.CSharp
                 OptionChain chain;
                 if (slice.OptionChains.TryGetValue(OptionSymbol, out chain))
                 {
-                    var atmStraddle = chain
-                        .OrderBy(x => Math.Abs(chain.Underlying.Price - x.Strike))
-                        .ThenByDescending(x => x.Expiry)
+                    // we find at the money (ATM) contract with farthest expiration
+                    var atmContract = chain
+                        .OrderByDescending(x => x.Expiry)
+                        .ThenBy(x => Math.Abs(chain.Underlying.Price - x.Strike))
                         .FirstOrDefault();
 
-                    if (atmStraddle != null)
+                    if (atmContract != null)
                     {
-                        Sell(OptionStrategies.Straddle(OptionSymbol, atmStraddle.Strike, atmStraddle.Expiry), 2);
+                        // if found, trade it
+                        MarketOrder(atmContract.Symbol, 1);
+                        MarketOnCloseOrder(atmContract.Symbol, -1);
                     }
                 }
-            }
-            else
-            {
-                Liquidate();
-            }
-
-            foreach(var kpv in slice.Bars)
-            {
-                Console.WriteLine("---> OnData: {0}, {1}, {2}", Time, kpv.Key.Value, kpv.Value.Close.ToString("0.00"));
             }
         }
 
@@ -198,15 +195,26 @@ namespace QuantConnect.Algorithm.CSharp
             var parts = zipEntryName.Replace(".csv", string.Empty).Split('_');
             var patrs = zipEntryName.Split('\t');
             string unicodestr = dstcode.GetString(Encoding.Convert(srcencode,dstcode,srcencode.GetBytes(patrs[1])));
+            var right = OptionRight.Put;
+            decimal strike = 0.0m;
+            var expirymonth = 0;
+            Int32.TryParse(unicodestr.Substring(6,1),out expirymonth);
+            DateTime expiry = getThirdWednesdayOfMonth(new DateTime(2015, expirymonth,1));
 
             switch (symbol.ID.SecurityType)
             {
                 case SecurityType.Option:
                     {
-                        var style = (OptionStyle)Enum.Parse(typeof(OptionStyle), parts[4], true);
-                        var right = (OptionRight)Enum.Parse(typeof(OptionRight), parts[5], true);
-                        var strike = decimal.Parse(parts[6]) / 10000m;
-                        var expiry = DateTime.ParseExact(parts[7], DateFormat.EightCharacter, null);
+                        if (patrs[1].Substring(5, 1) == "购" )
+                        { right = OptionRight.Call; } 
+                        else
+                        { if (patrs[1].Substring(5, 1) == "沽" )
+                            { right = OptionRight.Put; } }
+                        var style = OptionStyle.European;
+                        //var style = (OptionStyle)Enum.Parse(typeof(OptionStyle), parts[4], true);
+                        //var right = (OptionRight)Enum.Parse(typeof(OptionRight), parts[5], true);
+                        strike = decimal.Parse(patrs[1].Substring(8,4)) / 1000m;
+                        //var expiry = DateTime.ParseExact(parts[7], DateFormat.EightCharacter, null);
 
                         //return Symbol.CreateOption(symbol.Underlying, Market.USA, style, right, strike, expiry);
                         //changed by rwayan for suited for chinese option
@@ -243,6 +251,17 @@ namespace QuantConnect.Algorithm.CSharp
             //return Path.Combine(dataDirectory, filename);
         }
 
+    public static DateTime getThirdWednesdayOfMonth(DateTime seedDate)
+        {
+            DateTime wed3 = new DateTime(seedDate.Year, seedDate.Month, 15); //3rd Wednesday cannot start prior to the 15th of the month
+            while (wed3.DayOfWeek != DayOfWeek.Wednesday)
+            {
+                wed3 = wed3.AddDays(1);
+            }
+            return wed3;
+        }
     }
+
+    
 
 }

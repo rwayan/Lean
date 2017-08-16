@@ -33,9 +33,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>QuantConnect.ToolBox.AlgoSeekFuturesConverter.Program</StartupObject>
+    <StartupObject>QuantConnect.ToolBox.AlgoSeekOptionsConverter.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CsvHelper, Version=2.0.0.0, Culture=neutral, PublicKeyToken=8c4959082be5c823, processorArchitecture=MSIL">
+      <HintPath>..\packages\CsvHelper.2.16.3.0\lib\net45\CsvHelper.dll</HintPath>
+    </Reference>
     <Reference Include="EngineIoClientDotNet, Version=0.9.22.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\EngineIoClientDotNet.0.9.22\lib\net45\EngineIoClientDotNet.dll</HintPath>
     </Reference>
@@ -157,6 +160,7 @@
     <Compile Include="AlgoSeekFuturesConverter\Program.cs" />
     <Compile Include="AlgoSeekOptionsConverter\AlgoSeekOptionsConverter.cs" />
     <Compile Include="AlgoSeekOptionsConverter\AlgoSeekOptionsProcessor.cs" />
+    <Compile Include="AlgoSeekOptionsConverter\AlgoSeekStocksReader.cs" />
     <Compile Include="AlgoSeekOptionsConverter\AlgoSeekOptionsReader.cs" />
     <Compile Include="AlgoSeekOptionsConverter\Program.cs" />
     <Compile Include="Bz2StreamProvider.cs" />

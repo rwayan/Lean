@@ -39,7 +39,7 @@ namespace QuantConnect.Configuration
             {
                 return new JObject
                 {
-                    {"algorithm-type-name", "BasicTemplateAlgorithm"},
+                    {"algorithm-type-name", "BasicTemplateChineseOptionStrategyAlgorithm"},
                     {"live-mode", false},
                     {"data-folder", "../../../Data/"},
                     {"messaging-handler", "QuantConnect.Messaging.Messaging"},

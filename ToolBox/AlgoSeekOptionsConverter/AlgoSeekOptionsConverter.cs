@@ -72,7 +72,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
         public void Convert()
         {
             //Get the list of all the files, then for each file open a separate streamer.
-            var files = Directory.EnumerateFiles(_remote, _remoteMask);
+            var files = Directory.EnumerateFiles(_source, _remoteMask);
             Log.Trace("AlgoSeekOptionsConverter.Convert(): Loading {0} AlgoSeekOptionsReader for {1} ", files.Count(), _referenceDate);
 
             //Initialize parameters
@@ -91,7 +91,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
                 {
                     Log.Trace("Remote File :" + file);
 
-                    var csvFile = Path.Combine(_source, Path.GetFileName(file).Replace(".bz2", ""));
+                    var csvFile = Path.Combine(_source, Path.GetFileName(file).Replace(".zip", ""));
 
                     Log.Trace("Source File :" + csvFile);
 
@@ -113,6 +113,8 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
                     // var reader = new AlgoSeekOptionsReader(csvFile, _referenceDate, symbolFilter);
 
                     var reader = new AlgoSeekOptionsReader(csvFile, _referenceDate);
+                    //var reader = new AlgoSeekStocksReader(csvFile, _referenceDate);
+
                     if (start == DateTime.MinValue)
                     {
                         start = DateTime.Now;
@@ -197,8 +199,8 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
                     foreach (var type in Enum.GetValues(typeof(TickType)))
                     {
                         var tickType = type;
-                        var groups = processors.Values.Select(x => x[(int)tickType]).Where(x => x.Queue.Count > 0).GroupBy(process => process.Symbol.Underlying.Value);
-
+                        //var groups = processors.Values.Select(x => x[(int)tickType]).Where(x => x.Queue.Count > 0).GroupBy(process => process.Symbol.Underlying.Value);
+                        var groups = processors.Values.Select(x => x[(int)tickType]).Where(x => x.Queue.Count > 0).GroupBy(process => process.Symbol.Value);
                         Parallel.ForEach(groups, group =>
                         {
                             string zip = string.Empty;
@@ -270,6 +272,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
             Log.Trace("AlgoSeekOptionsConverter.Package(): Zipping all files ...");
 
             var destination = Path.Combine(_destination, "option");
+            //var destination = Path.Combine(_destination, "equity");
             var dateMask = date.ToString(DateFormat.EightCharacter);
 
             var files =

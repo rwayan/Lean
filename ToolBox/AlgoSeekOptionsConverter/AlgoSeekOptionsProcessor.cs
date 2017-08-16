@@ -190,10 +190,12 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
         {
             if (OS.IsWindows)
             {
-                if (_windowsRestrictedNames.Contains(symbol.Value.ToLower()) || 
-                    _windowsRestrictedNames.Contains(symbol.Underlying.Value.ToLower()))
-                {
-                    symbol = Symbol.CreateOption(SafeName(symbol.Underlying.Value), Market.USA, OptionStyle.American, symbol.ID.OptionRight, symbol.ID.StrikePrice, symbol.ID.Date);
+                if (symbol.SecurityType == SecurityType.Option) { 
+                    if (_windowsRestrictedNames.Contains(symbol.Value.ToLower()) ||
+                        _windowsRestrictedNames.Contains(symbol.Underlying.Value.ToLower()))
+                    {
+                        symbol = Symbol.CreateOption(SafeName(symbol.Underlying.Value), Market.USA, OptionStyle.American, symbol.ID.OptionRight, symbol.ID.StrikePrice, symbol.ID.Date);
+                    }
                 }
             }
             return symbol;

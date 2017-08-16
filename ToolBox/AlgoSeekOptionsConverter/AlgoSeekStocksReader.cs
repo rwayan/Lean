@@ -29,7 +29,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
     /// <summary>
     /// Enumerator for converting AlgoSeek option files into Ticks.
     /// </summary>
-    public class AlgoSeekOptionsReader : IEnumerator<Tick>
+    public class AlgoSeekStocksReader : IEnumerator<Tick>
     {
         private DateTime _date;
         private Stream _stream;
@@ -73,7 +73,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
         /// </summary>
         /// <param name="file">BZ File for algoseek</param>
         /// <param name="date">Reference date of the folder</param>
-        public AlgoSeekOptionsReader(string file, DateTime date, HashSet<string> symbolFilter = null)
+        public AlgoSeekStocksReader(string file, DateTime date, HashSet<string> symbolFilter = null)
         {
             _date = date;
             _underlyingCache = new Dictionary<string, Symbol>();
@@ -81,62 +81,21 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
             _stream = streamProvider.Open(file).First();
             _streamReader = new StreamReader(_stream);
             _symbolFilter = symbolFilter;
-
-            var baseinfostreamProvider = StreamProvider.ForExtension(Path.GetExtension("E:\\data\\optiondata\\optionbaseinfo.csv"));
-            var baseinfostream = baseinfostreamProvider.Open("E:\\data\\optiondata\\optionbaseinfo.csv").First();
-            var basestreamReader = new StreamReader(baseinfostream);
-            var baseline = basestreamReader.ReadLine();
-            decimal strike = 2.2m;
-            var underlying = "510050";
-            var optionRight = OptionRight.Call;
-            var expiry = new DateTime(2015, 3, 25);
-
-            while ((baseline = basestreamReader.ReadLine()) != null)
-            {
-                baseline = baseline.Replace("\"", "");
-                var csv = baseline.ToCsv();
-                if (csv[1] == Path.GetFileNameWithoutExtension(file).Substring(2, 8)){
-                    strike = csv[12].ToDecimal();
-                    underlying = csv[8];
-                    optionRight = csv[11] == "CO" ? OptionRight.Call : OptionRight.Put;
-                    expiry = DateTime.ParseExact(csv[18], "yyyy-MM-dd",null);
-                    break;
-                }
-
-            }
-
-            
-
-
-
-            
-
-            var optionStyle = OptionStyle.European; // couldn't see this specified in the file, maybe need a reference file
-
-            if (!_underlyingCache.ContainsKey(underlying))
-            {
-                _symbol = Symbol.CreateOption(underlying, Market.SSE, optionStyle, optionRight, strike, expiry, null, false);
-                _underlyingCache[underlying] = _symbol.Underlying;
-            }
-            else
-            {
-                _symbol = Symbol.CreateOption(_underlyingCache[underlying], Market.SSE, optionStyle, optionRight, strike, expiry);
-            }
-
+            _symbol = Symbol.Create("510050", SecurityType.Equity, Market.SSE);
             // detecting column order in the file
             var headerLine = _streamReader.ReadLine();
             if (!string.IsNullOrEmpty(headerLine))
             {
                 var header = headerLine.ToCsv();
 
-                _columnTime = header.FindIndex(x => x == "Time");
-                _columnPrice= header.FindIndex(x => x == "Price");
-                _columnVolume = header.FindIndex(x => x == "Volume");
+                _columnTime = header.FindIndex(x => x == "dt");
+                _columnPrice= header.FindIndex(x => x == "close");
+                _columnVolume = header.FindIndex(x => x == "volume");
                 _columnAmount = header.FindIndex(x => x == "Amount");
                 _columnOpenInt = header.FindIndex(x => x == "OpenInt");
                 _columnTotalVol = header.FindIndex(x => x == "TotalVol");
                 _columnTotalAmount = header.FindIndex(x => x == "TotalAmount");
-                _columnLastClose = header.FindIndex(x => x == "LastClose");
+                _columnLastClose = header.FindIndex(x => x == "close");
                 _columnOpen = header.FindIndex(x => x == "Open");
                 _columnHigh = header.FindIndex(x => x == "High");
                 _columnLow = header.FindIndex(x => x == "Low");
@@ -196,11 +155,11 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
         /// </summary>
         public void Reset()
         {
-            throw new NotImplementedException("Reset not implemented for AlgoSeekOptionsReader.");
+            throw new NotImplementedException("Reset not implemented for AlgoSeekStocksReader.");
         }
 
         /// <summary>
-        /// Dispose of the underlying AlgoSeekOptionsReader
+        /// Dispose of the underlying AlgoSeekStocksReader
         /// </summary>
         public void Dispose()
         {
@@ -226,7 +185,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
                     return null;
                 }
 
-                TickType tickType = TickType.OpenInterest;
+                TickType tickType = TickType.Trade;
 
 
                 // ignoring time zones completely -- this is all in the 'data-time-zone'
@@ -241,6 +200,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
                 }
                 else
                 {
+                    if (parsedDate.Date != _date) { return null; }
 
                     var hours = parsedDate.Hour; 
                     var minutes = parsedDate.Minute;
@@ -250,7 +210,6 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
 
                     var price = csv[_columnPrice].ToDecimal(); //源程序除以10000的意图不明确，暂时不除 / 10000m;
                     var quantity = csv[_columnVolume].ToInt32();
-                    var OpenInt = csv[_columnOpenInt].ToInt32();
 
                     switch (tickType)
                     {
@@ -293,7 +252,7 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
                             Time = time,
                             TickType = tickType,
                             Exchange = Market.SSE,
-                            Value = OpenInt
+                            Value = quantity
                         };
 
                         return tick;

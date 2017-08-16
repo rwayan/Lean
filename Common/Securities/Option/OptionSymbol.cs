@@ -26,9 +26,17 @@ namespace QuantConnect.Securities.Option
             // find out the day of first Friday in this month
             var firstFriday = firstDayOfMonth == DayOfWeek.Saturday ? 7 : 6 - (int)firstDayOfMonth;
 
-            // check if the expiration date is within the week containing 3rd Friday
-            // we exclude monday, wednesday, and friday weeklys
-            return firstFriday + 7 + 5 /*sat -> wed */ < date.Day && date.Day < firstFriday + 2 * 7 + 2 /* sat, sun*/;
+            //代码中有一段对期权合约是否标准的判断，由于这个是美国标准，暂时不用
+            if (symbol.ID.Market == Market.USA)
+            {
+                // check if the expiration date is within the week containing 3rd Friday
+                // we exclude monday, wednesday, and friday weeklys
+                return firstFriday + 7 + 5 /*sat -> wed */ < date.Day && date.Day < firstFriday + 2 * 7 + 2 /* sat, sun*/;
+            }
+            else
+            {
+                return true;
+            }
         }
 
         /// <summary>

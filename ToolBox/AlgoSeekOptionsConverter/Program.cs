@@ -21,6 +21,7 @@ using QuantConnect.Configuration;
 using QuantConnect.Util;
 using System.IO;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
 {
@@ -29,69 +30,94 @@ namespace QuantConnect.ToolBox.AlgoSeekOptionsConverter
     /// </summary>
     public class Program
     {
+        public static DateTime[] GetAllDays(DateTime dt1, DateTime dt2)
+        {
+            List<DateTime> listDays = new List<DateTime>();
+            DateTime dtDay = new DateTime();
+            for (dtDay = dt1; dtDay.CompareTo(dt2) <= 0; dtDay = dtDay.AddDays(1))
+            {
+                listDays.Add(dtDay);
+            }
+            return listDays.ToArray();
+        }
+
         public static void Main(string[] args)
         {
             var date = args[0];
-            // There are practical file limits we need to override for this to work. 
-            // By default programs are only allowed 1024 files open; for options parsing we need 100k
-            Environment.SetEnvironmentVariable("MONO_MANAGED_WATCHER", "disabled");
-            Environment.SetEnvironmentVariable("MONO_GC_PARAMS", "max-heap-size=4g");
-            Log.LogHandler = new CompositeLogHandler(new ILogHandler[] { new ConsoleLogHandler(), new FileLogHandler("log.txt") });
+            //var startdate = DateTime.ParseExact("20150101", "yyyyMMdd",null);
+            //var enddate = DateTime.ParseExact("20161231", "yyyyMMdd", null);
+            var dirs = Directory.EnumerateDirectories("E:\\data\\optiondata\\option\\sse\\minute\\510050\\");
 
-            // Directory for the data, output and processed cache:
-            var remoteMask = Config.Get("options-remote-file-mask", "*.bz2").Replace("{0}", date);
-            var remoteDirectory = Config.Get("options-remote-directory").Replace("{0}", date);
-            var sourceDirectory = Config.Get("options-source-directory").Replace("{0}", date);
-            var dataDirectory = Config.Get("data-directory").Replace("{0}", date);
-            var cleanSourceDirectory = Config.GetBool("clean-source-directory", false);
+            //var dirs = GetAllDays(startdate, enddate);
 
-            Log.Trace("CONFIGURATION:");
-            Log.Trace("Processor Count: " + Environment.ProcessorCount);
-            Log.Trace("Remote Directory: " + remoteDirectory);
-            Log.Trace("Source Directory: " + sourceDirectory);
-            Log.Trace("Destination Directory: " + dataDirectory);
+            //foreach (DateTime d in dirs) {
+            foreach (string d in dirs) {
+                //date = d.ToString("yyyyMMdd");
+                date = d.Substring(d.Length - 8);
+                // There are practical file limits we need to override for this to work. 
+                // By default programs are only allowed 1024 files open; for options parsing we need 100k
+                Environment.SetEnvironmentVariable("MONO_MANAGED_WATCHER", "disabled");
+                Environment.SetEnvironmentVariable("MONO_GC_PARAMS", "max-heap-size=4g");
+                Log.LogHandler = new CompositeLogHandler(new ILogHandler[] { new ConsoleLogHandler()/*, new FileLogHandler("log.txt")*/ });
 
-            // Date for the option bz files.
-            var referenceDate = DateTime.ParseExact(date, DateFormat.EightCharacter, CultureInfo.InvariantCulture);
+                // Directory for the data, output and processed cache:
+                var remoteMask = Config.Get("options-remote-file-mask", "*.csv").Replace("{0}", date);
+                var remoteDirectory = Config.Get("options-remote-directory", "E:\\data\\optiondata\\option\\sse\\minute\\510050\\{0}").Replace("{0}", date);
+                var sourceDirectory = Config.Get("options-source-directory", "E:\\data\\optiondata\\option\\sse\\minute\\510050\\{0}").Replace("{0}", date);
+                var dataDirectory = Config.Get("data-directory", "option/output").Replace("{0}", date);
+                var cleanSourceDirectory = Config.GetBool("clean-source-directory", false);
+                Log.DebuggingLevel = -1;
+                Log.Trace("CONFIGURATION:");
+                Log.Trace("Processor Count: " + Environment.ProcessorCount);
+                Log.Trace("Remote Directory: " + remoteDirectory);
+                Log.Trace("Source Directory: " + sourceDirectory);
+                Log.Trace("Destination Directory: " + dataDirectory);
 
-            Log.Trace("DateTime: " + referenceDate.Date.ToString());
+                // Date for the option bz files.
+                var referenceDate = DateTime.ParseExact(date, DateFormat.EightCharacter, CultureInfo.InvariantCulture);
 
-            // checking if remote folder exists
-            if (!Directory.Exists(remoteDirectory))
-            {
-                Log.Error("Remote Directory doesn't exist: " + remoteDirectory);
-                return;
-            }
+                Log.Trace("DateTime: " + referenceDate.Date.ToString());
 
-            // Convert the date:
-            var timer = Stopwatch.StartNew();
-            var converter = new AlgoSeekOptionsConverter(Resolution.Minute, referenceDate, remoteDirectory, remoteMask, sourceDirectory, dataDirectory);
+                //// checking if remote folder exists
+                //if (!Directory.Exists(remoteDirectory))
+                //{
+                //    Log.Error("Remote Directory doesn't exist: " + remoteDirectory);
+                //    return;
+                //}
 
-            converter.Clean(referenceDate);
-            Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): {0} Cleaning finished in time: {1}", referenceDate, timer.Elapsed));
+                // Convert the date:
+                var timer = Stopwatch.StartNew();
+                var converter = new AlgoSeekOptionsConverter(Resolution.Minute, referenceDate, remoteDirectory, remoteMask, sourceDirectory, dataDirectory);
 
-            timer.Restart();
-            converter.Convert();
-            Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): {0} Conversion finished in time: {1}", referenceDate, timer.Elapsed));
+                converter.Clean(referenceDate);
+                Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): {0} Cleaning finished in time: {1}", referenceDate, timer.Elapsed));
 
-            timer.Restart();
-            converter.Package(referenceDate);
-            Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): {0} Compression finished in time: {1}", referenceDate, timer.Elapsed));
+                timer.Restart();
+                converter.Convert();
+                Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): {0} Conversion finished in time: {1}", referenceDate, timer.Elapsed));
 
-            if (cleanSourceDirectory)
-            {
-                Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): Cleaning source directory: {0}", sourceDirectory));
+                timer.Restart();
+                converter.Package(referenceDate);
+                Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): {0} Compression finished in time: {1}", referenceDate, timer.Elapsed));
 
-                try
+                if (cleanSourceDirectory)
                 {
-                    Directory.Delete(sourceDirectory, true);
+                    Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): Cleaning source directory: {0}", sourceDirectory));
+
+                    try
+                    {
+                        Directory.Delete(sourceDirectory, true);
+                    }
+                    catch (Exception err)
+                    {
+                        Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): Error while cleaning source directory {0}", err.Message));
+                    }
                 }
-                catch (Exception err)
-                {
-                    Log.Trace(string.Format("AlgoSeekOptionConverter.Main(): Error while cleaning source directory {0}", err.Message));
-                }
+
             }
 
         }
     }
+
+
 }

@@ -312,7 +312,9 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             var symbol = baseData.Symbol;
             
             OptionChain chain;
+
             var canonical = Symbol.CreateOption(symbol.Underlying, symbol.ID.Market, default(OptionStyle), default(OptionRight), 0, SecurityIdentifier.DefaultDate);
+            canonical = symbol;
             if (!optionChains.TryGetValue(canonical, out chain))
             {
                 chain = new OptionChain(canonical, algorithmTime);
